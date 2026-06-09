@@ -11,6 +11,7 @@ import aiRouter from './routes/ai';
 import messagesRouter from './routes/messages';
 import placesRouter from './routes/places';
 import notificationsRouter from './routes/notifications';
+import applicationsRouter from './routes/applications';
 import { initChatServer } from './services/chat';
 
 const app = express();
@@ -43,6 +44,7 @@ app.use('/api/ai', aiRouter);
 app.use('/api/messages', messagesRouter);
 app.use('/api/places', placesRouter);
 app.use('/api/notifications', notificationsRouter);
+app.use('/api/applications', applicationsRouter);
 
 // ── 404 handler ───────────────────────────────────────────────────────────────
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
