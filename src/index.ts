@@ -10,6 +10,7 @@ import listingsRouter from './routes/listings';
 import aiRouter from './routes/ai';
 import messagesRouter from './routes/messages';
 import placesRouter from './routes/places';
+import notificationsRouter from './routes/notifications';
 import { initChatServer } from './services/chat';
 
 const app = express();
@@ -41,6 +42,7 @@ app.use('/api/listings', listingsRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api/messages', messagesRouter);
 app.use('/api/places', placesRouter);
+app.use('/api/notifications', notificationsRouter);
 
 // ── 404 handler ───────────────────────────────────────────────────────────────
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
@@ -56,7 +58,7 @@ initChatServer(httpServer, CLIENT_ORIGIN);
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 httpServer.listen(PORT, () => {
-  console.log(`\n🔑 KeyLink API running on port ${PORT}`);
+  console.log(`\n🏠 RentalDom API running on port ${PORT}`);
   console.log(`   REST:      http://localhost:${PORT}/api`);
   console.log(`   WebSocket: ws://localhost:${PORT}/chat`);
   console.log(`   Health:    http://localhost:${PORT}/health\n`);

@@ -2,6 +2,7 @@ import { Server as HttpServer } from 'http';
 import { Server as SocketServer, Socket } from 'socket.io';
 import { verifyToken } from '../lib/jwt';
 import { supabase } from '../lib/supabase';
+import { notifyUser } from '../lib/notifications';
 
 interface AuthSocket extends Socket {
   userId?: string;
@@ -80,6 +81,20 @@ export function initChatServer(httpServer: HttpServer, clientOrigin: string) {
         .from('conversations')
         .update({ last_message: text.trim(), last_message_at: now })
         .eq('id', conversationId);
+
+      // Push notification to recipient if they're not already in the room
+      const recipientId = conv.tenant_id === socket.userId ? conv.landlord_id : conv.tenant_id;
+      const room = io.sockets.adapter.rooms.get(`conv:${conversationId}`);
+      const recipientOnline = room && room.size > 1;
+      if (!recipientOnline) {
+        const { data: sender } = await supabase
+          .from('profiles').select('display_name').eq('id', socket.userId).single();
+        notifyUser(supabase, recipientId, {
+          title: sender?.display_name ?? 'New Message',
+          body: text.trim().length > 80 ? text.trim().slice(0, 77) + '...' : text.trim(),
+          data: { screen: 'messages', conversationId },
+        }).catch(() => {});
+      }
 
       io.to(`conv:${conversationId}`).emit('new_message', {
         id: message.id,

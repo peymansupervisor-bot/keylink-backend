@@ -4,6 +4,7 @@ import { uploadImage } from '../lib/storage';
 import { requireAuth, AuthRequest } from '../middleware/auth';
 import { upload } from '../middleware/upload';
 import { scoreApplication } from '../lib/claude';
+import { notifyUser } from '../lib/notifications';
 
 const router = Router();
 
@@ -259,7 +260,7 @@ router.post('/:id/apply', requireAuth, async (req: AuthRequest, res): Promise<vo
 
   const { data: listing } = await supabase
     .from('listings')
-    .select('monthly_rent, bedrooms, property_type')
+    .select('monthly_rent, bedrooms, property_type, landlord_id')
     .eq('id', req.params.id)
     .single();
 
@@ -297,6 +298,17 @@ router.post('/:id/apply', requireAuth, async (req: AuthRequest, res): Promise<vo
   if (error) { res.status(500).json({ error: error.message }); return; }
 
   supabase.rpc('increment_applicant_count', { listing_id: req.params.id }).then(() => {});
+
+  // Notify landlord of new application (fire and forget)
+  if (listing?.landlord_id) {
+    const { data: tenant } = await supabase
+      .from('profiles').select('display_name').eq('id', req.userId).single();
+    notifyUser(supabase, listing.landlord_id, {
+      title: '📋 New Application',
+      body: `${tenant?.display_name ?? 'Someone'} applied to your listing`,
+      data: { screen: 'applications', listingId: req.params.id },
+    }).catch(() => {});
+  }
 
   res.status(201).json(application);
 });
