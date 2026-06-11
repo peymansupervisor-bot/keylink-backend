@@ -17,6 +17,8 @@ import { initChatServer } from './services/chat';
 const app = express();
 const httpServer = createServer(app);
 
+app.set('trust proxy', 1); // Render sits behind a proxy; needed for rate-limiter IP detection
+
 const PORT = process.env.PORT ?? 4000;
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN ?? '*';
 
