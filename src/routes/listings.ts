@@ -53,6 +53,35 @@ router.get('/mine', requireAuth, async (req: AuthRequest, res): Promise<void> =>
   res.json((data ?? []).map(normalizeListing));
 });
 
+// ─── GET /listings/saved ──────────────────────────────────────────────────────
+router.get('/saved', requireAuth, async (req: AuthRequest, res): Promise<void> => {
+  const { data, error } = await supabase
+    .from('saved_listings')
+    .select('listing_id, saved_at, listings(*)')
+    .eq('user_id', req.userId)
+    .order('saved_at', { ascending: false });
+
+  if (error) { res.status(500).json({ error: error.message }); return; }
+
+  const listings = (data ?? []).map((row: any) => ({
+    ...normalizeListing(row.listings),
+    savedAt: row.saved_at,
+  }));
+  res.json(listings);
+});
+
+// ─── GET /listings/saved/ids ──────────────────────────────────────────────────
+// Lightweight: just the IDs, used to show heart state on listing cards
+router.get('/saved/ids', requireAuth, async (req: AuthRequest, res): Promise<void> => {
+  const { data, error } = await supabase
+    .from('saved_listings')
+    .select('listing_id')
+    .eq('user_id', req.userId);
+
+  if (error) { res.status(500).json({ error: error.message }); return; }
+  res.json((data ?? []).map((r: any) => r.listing_id));
+});
+
 // ─── GET /listings/:id ────────────────────────────────────────────────────────
 router.get('/:id', async (req, res): Promise<void> => {
   const { data, error } = await supabase
@@ -334,6 +363,28 @@ router.get('/:id/applications', requireAuth, async (req: AuthRequest, res): Prom
 
   if (error) { res.status(500).json({ error: error.message }); return; }
   res.json(data ?? []);
+});
+
+// ─── POST /listings/:id/save ──────────────────────────────────────────────────
+router.post('/:id/save', requireAuth, async (req: AuthRequest, res): Promise<void> => {
+  const { error } = await supabase
+    .from('saved_listings')
+    .upsert({ user_id: req.userId, listing_id: req.params.id }, { onConflict: 'user_id,listing_id' });
+
+  if (error) { res.status(500).json({ error: error.message }); return; }
+  res.json({ saved: true });
+});
+
+// ─── DELETE /listings/:id/save ────────────────────────────────────────────────
+router.delete('/:id/save', requireAuth, async (req: AuthRequest, res): Promise<void> => {
+  const { error } = await supabase
+    .from('saved_listings')
+    .delete()
+    .eq('user_id', req.userId)
+    .eq('listing_id', req.params.id);
+
+  if (error) { res.status(500).json({ error: error.message }); return; }
+  res.json({ saved: false });
 });
 
 export default router;
