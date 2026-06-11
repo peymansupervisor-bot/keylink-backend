@@ -14,11 +14,7 @@ services:
         sync: false
       - key: SUPABASE_STORAGE_BUCKET
         sync: false
-      - key: TWILIO_ACCOUNT_SID
-        sync: false
-      - key: TWILIO_AUTH_TOKEN
-        sync: false
-      - key: TWILIO_VERIFY_SID
+      - key: FIREBASE_SERVICE_ACCOUNT
         sync: false
       - key: JWT_SECRET
         sync: false

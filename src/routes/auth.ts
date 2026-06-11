@@ -1,6 +1,6 @@
-import { Router, Response } from 'express';
+import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
-import { sendOtp, verifyOtp } from '../lib/twilio';
+import { verifyFirebaseToken } from '../lib/firebase-admin';
 import { supabase } from '../lib/supabase';
 import { signToken } from '../lib/jwt';
 import { uploadImage } from '../lib/storage';
@@ -9,60 +9,34 @@ import { upload } from '../middleware/upload';
 
 const router = Router();
 
-const otpLimit = rateLimit({
+const tokenLimit = rateLimit({
   windowMs: 10 * 60 * 1000,
-  max: 5,
-  message: { error: 'Too many OTP requests. Please wait 10 minutes.' },
+  max: 20,
+  message: { error: 'Too many login attempts. Please wait 10 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-// ─── POST /auth/send-otp ─────────────────────────────────────────────────────
-router.post('/send-otp', otpLimit, async (req, res): Promise<void> => {
-  const { phone } = req.body as { phone?: string };
+// ─── POST /auth/verify-firebase-token ────────────────────────────────────────
+// Called by the app after Firebase Phone Auth confirms the OTP on-device.
+// Receives the Firebase ID token, validates it, and returns a RentalDom JWT.
+router.post('/verify-firebase-token', tokenLimit, async (req, res): Promise<void> => {
+  const { idToken } = req.body as { idToken?: string };
 
-  if (!phone || !/^\+\d{7,15}$/.test(phone)) {
-    res.status(400).json({ error: 'Invalid phone number format. Use E.164 (e.g. +15555551234)' });
+  if (!idToken) {
+    res.status(400).json({ error: 'idToken is required' });
     return;
   }
 
+  let phone: string;
   try {
-    await sendOtp(phone);
-    res.json({ status: 'pending' });
+    ({ phone } = await verifyFirebaseToken(idToken));
   } catch (err: any) {
-    if (err.code === 'INVALID_LINE_TYPE') {
-      res.status(400).json({ error: err.message, code: err.code });
-    } else {
-      console.error('sendOtp error:', err);
-      res.status(500).json({ error: 'Failed to send verification code. Please try again.' });
-    }
-  }
-});
-
-// ─── POST /auth/verify-otp ───────────────────────────────────────────────────
-router.post('/verify-otp', async (req, res): Promise<void> => {
-  const { phone, code } = req.body as { phone?: string; code?: string };
-
-  if (!phone || !code) {
-    res.status(400).json({ error: 'Phone and code are required' });
+    console.error('Firebase token verification error:', err);
+    res.status(401).json({ error: 'Invalid or expired authentication token' });
     return;
   }
 
-  let approved: boolean;
-  try {
-    approved = await verifyOtp(phone, code);
-  } catch (err: any) {
-    console.error('verifyOtp error:', err);
-    res.status(500).json({ error: 'Verification service unavailable' });
-    return;
-  }
-
-  if (!approved) {
-    res.status(400).json({ error: 'Incorrect or expired code' });
-    return;
-  }
-
-  // Look up existing profile by phone
   const { data: existing } = await supabase
     .from('profiles')
     .select('*')
@@ -76,7 +50,7 @@ router.post('/verify-otp', async (req, res): Promise<void> => {
     isNewUser = true;
     const { data: created, error } = await supabase
       .from('profiles')
-      .insert({ phone, email: `${phone.replace(/\D/g, '')}@keylink.app` })
+      .insert({ phone, email: `${phone.replace(/\D/g, '')}@rentaldom.com` })
       .select()
       .single();
 
