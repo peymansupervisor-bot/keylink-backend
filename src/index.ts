@@ -62,7 +62,7 @@ initChatServer(httpServer, CLIENT_ORIGIN);
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 httpServer.listen(PORT, () => {
-  console.log(`\n🏠 RENTALDOME API running on port ${PORT}`);
+  console.log(`\n🏠 EMLAKIE API running on port ${PORT}`);
   console.log(`   REST:      http://localhost:${PORT}/api`);
   console.log(`   WebSocket: ws://localhost:${PORT}/chat`);
   console.log(`   Health:    http://localhost:${PORT}/health\n`);
