@@ -124,8 +124,8 @@ router.post(
   async (req: AuthRequest, res): Promise<void> => {
     const files = req.files as Express.Multer.File[] | undefined;
 
-    if (!files || files.length < 10) {
-      res.status(400).json({ error: 'At least 10 photos are required' });
+    if (!files || files.length < 1) {
+      res.status(400).json({ error: 'At least 1 photo is required' });
       return;
     }
 
